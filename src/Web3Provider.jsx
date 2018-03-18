@@ -33,10 +33,10 @@ class Web3Provider extends React.Component {
 
   constructor(props, context) {
     super(props, context);
-    const accounts = this.getAccounts();
 
     this.state = {
-      accounts,
+      accounts: [],
+      loaded: false,
       networkId: null,
       networkError: null
     };
@@ -44,10 +44,6 @@ class Web3Provider extends React.Component {
     this.networkInterval = null;
     this.fetchAccounts = this.fetchAccounts.bind(this);
     this.fetchNetwork = this.fetchNetwork.bind(this);
-
-    if (accounts) {
-      this.handleAccounts(accounts, true);
-    }
   }
 
   getChildContext() {
@@ -98,21 +94,20 @@ class Web3Provider extends React.Component {
    */
   fetchAccounts() {
     const { web3 } = window;
-    const ethAccounts = this.getAccounts();
 
-    if (isEmpty(ethAccounts)) {
-      web3 && web3.eth && web3.eth.getAccounts((err, accounts) => {
-        if (err) {
-          this.setState({
-            accountsError: err
-          });
-        } else {
-          this.handleAccounts(accounts);
-        }
-      });
-    } else {
-      this.handleAccounts(ethAccounts);
-    }
+    web3 && web3.eth && web3.eth.getAccounts((err, accounts) => {
+      if (!this.state.loaded) {
+        this.setState({ loaded: true });
+      }
+
+      if (err) {
+        this.setState({
+          accountsError: err
+        });
+      } else {
+        this.handleAccounts(accounts);
+      }
+    });
   }
 
   handleAccounts(accounts, isConstructor = false) {
@@ -184,23 +179,6 @@ class Web3Provider extends React.Component {
     });
   }
 
-  /**
-   * Get the account. We wrap in try/catch because reading `web3.eth.accounrs`
-   * will throw if no account is selected.
-   * @return {String}
-   */
-  getAccounts() {
-    try {
-      const { web3 } = window;
-      // throws if no account selected
-      const accounts = web3.eth.accounts;
-
-      return accounts;
-    } catch (e) {
-      return [];
-    }
-  }
-
   render() {
     const { web3 } = window;
     const {
@@ -215,6 +193,10 @@ class Web3Provider extends React.Component {
 
     if (!web3) {
       return <Web3UnavailableComponent />;
+    }
+
+    if (!this.state.loaded) {
+      return <p>Loading...</p>
     }
 
     if (isEmpty(this.state.accounts)) {
